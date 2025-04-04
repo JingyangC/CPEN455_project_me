@@ -95,20 +95,41 @@ class PixelCNN(nn.Module):
         num_mix = 3 if self.input_channels == 1 else 10
         self.nin_out = nin(nr_filters, num_mix * nr_logistic_mix)
         self.init_padding = None
+        
+        #added for early fusion
+        self.embedding = nn.Embedding(4, 3)     # 4 classes, 16 based on gpt recommendation
 
 
-    def forward(self, x, sample=False):
+    #def forward(self, x, sample=False):
+    def forward(self, x, class_labels, sample=False):
+        #"""
+        #added early fusion
+        if sample == False or sample != False:
+            class_embedding = self.embedding(class_labels)
+            B, C, H, W = x.shape
+            class_embedding = class_embedding.view(B, 3, 1, 1)      # reshape embedding for broadcasting
+            #print(class_labels.shape)
+            #print(class_embedding.shape)    #[16, 3]
+            x = x + class_embedding                                  # Add to feature maps
+        #"""
+        
         # similar as done in the tf repo :
         if self.init_padding is not sample:
             xs = [int(y) for y in x.size()]
             padding = Variable(torch.ones(xs[0], 1, xs[2], xs[3]), requires_grad=False)
             self.init_padding = padding.cuda() if x.is_cuda else padding
+            self.init_padding = self.init_padding.to(x.device)  #added for mp
+
 
         if sample :
             xs = [int(y) for y in x.size()]
             padding = Variable(torch.ones(xs[0], 1, xs[2], xs[3]), requires_grad=False)
             padding = padding.cuda() if x.is_cuda else padding
+            padding = padding.to(x.device)  #added for mps
             x = torch.cat((x, padding), 1)
+        
+        #print(x.device)     #okay
+        #print(self.init_padding.device) # not okay
 
         ###      UP PASS    ###
         x = x if sample else torch.cat((x, self.init_padding), 1)

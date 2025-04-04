@@ -26,6 +26,9 @@ def get_label(model, model_input, device):
     # and return the predicted label, which is a tensor of shape (batch_size,)
     answer = model(model_input, device)
     return answer
+
+    #perform the calculation as in the slide?
+    
 # End of your code
 
 def classifier(model, data_loader, device):

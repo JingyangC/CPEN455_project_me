@@ -8,20 +8,20 @@ from utils import *
 class nin(nn.Module):
     def __init__(self, dim_in, dim_out):
         super(nin, self).__init__()
-        self.lin_a = wn(nn.Linear(dim_in, dim_out))
+        self.lin_a = wn(nn.Linear(dim_in, dim_out))     # nn.linear create a fully connected layer, with wn applied
         self.dim_out = dim_out
 
     def forward(self, x):
         og_x = x
         # assumes pytorch ordering
         """ a network in network layer (1x1 CONV) """
-        # TODO : try with original ordering
-        x = x.permute(0, 2, 3, 1)
-        shp = [int(y) for y in x.size()]
-        out = self.lin_a(x.contiguous().view(shp[0]*shp[1]*shp[2], shp[3]))
-        shp[-1] = self.dim_out
-        out = out.view(shp)
-        return out.permute(0, 3, 1, 2)
+        # TODO : try with original ordering             # assume OG x is (batch, channels, height, width)
+        x = x.permute(0, 2, 3, 1)                       # this re-arrange to (batch, height, width, channels)
+        shp = [int(y) for y in x.size()]                # record tensor shape
+        out = self.lin_a(x.contiguous().view(shp[0]*shp[1]*shp[2], shp[3]))     # flattened, shape = (batch * height * width, channels)
+        shp[-1] = self.dim_out      
+        out = out.view(shp)                             # reshape back to (batch, height, width, new_channels)
+        return out.permute(0, 3, 1, 2)                  # (batch, dim_out, height, width)
 
 
 class down_shifted_conv2d(nn.Module):

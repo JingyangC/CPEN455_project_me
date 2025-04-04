@@ -1,3 +1,6 @@
+import os
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"     #mps unsupport weight norm operation
+
 import time
 import os
 import torch
@@ -15,7 +18,7 @@ from pytorch_fid.fid_score import calculate_fid_given_paths
 
 
 def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, mode = 'training'):
-    if mode == 'training':
+    if mode == 'training':      #specify doing train or test
         model.train()
     else:
         model.eval()
@@ -24,17 +27,30 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
     loss_tracker = mean_tracker()
     
     for batch_idx, item in enumerate(tqdm(data_loader)):
-        model_input, _ = item
-        model_input = model_input.to(device)
-        model_output = model(model_input)
+        
+        """
+        #OG
+        model_input, _ = item                  #OG
+        model_input = model_input.to(device)        #accomdate the device using 
+        model_output = model(model_input)      #OG
+        #"""
+        #"""
+        # new code passing class label, conditional
+        model_input, class_labels = item        #new
+        model_input = model_input.to(device)        #accomdate the device using 
+        class_labels = class_labels.to(device)      #new
+        # Forward pass: pass both image and class_labels to the model.
+        model_output = model(model_input, class_labels, sample=False)
+        #"""
+        
         loss = loss_op(model_input, model_output)
-        loss_tracker.update(loss.item()/deno)
+        loss_tracker.update(loss.item()/deno)       #look at util if curious
         if mode == 'training':
             optimizer.zero_grad()
             loss.backward()
-            optimizer.step()
+            optimizer.step()        #update optimizer, must be at the end
         
-    if args.en_wandb:
+    if args.en_wandb:               #organized visual
         wandb.log({mode + "-Average-BPD" : loss_tracker.get_mean()})
         wandb.log({mode + "-epoch": epoch})
 
@@ -119,6 +135,10 @@ if __name__ == '__main__':
 
     #set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    #newly added
+    device = "mps"
+    
     #Reminder: if you have patience to read code line by line, you should notice this comment. here is the reason why we set num_workers to 0:
     #In order to avoid pickling errors with the dataset on different machines, we set num_workers to 0.
     #If you are using ubuntu/linux/colab, and find that loading data is too slow, you can set num_workers to 1 or even bigger.
@@ -223,7 +243,10 @@ if __name__ == '__main__':
         
         if epoch % args.sampling_interval == 0:
             print('......sampling......')
-            sample_t = sample(model, args.sample_batch_size, args.obs, sample_op)
+            # new, added for condition
+            class_labels = torch.full((args.sample_batch_size, ), 0, dtype=torch.int64, device=device)
+            sample_t = sample(model, args.sample_batch_size, args.obs, sample_op, class_labels)
+            #sample_t = sample(model, args.sample_batch_size, args.obs, sample_op)   #OG
             sample_t = rescaling_inv(sample_t)
             save_images(sample_t, args.sample_dir)
             sample_result = wandb.Image(sample_t, caption="epoch {}".format(epoch))

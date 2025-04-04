@@ -53,7 +53,7 @@ def discretized_mix_logistic_loss(x, l):
     # here and below: getting the means and adjusting them based on preceding
     # sub-pixels
     x = x.contiguous()
-    x = x.unsqueeze(-1) + Variable(torch.zeros(xs + [nr_mix]).to(x.device), requires_grad=False)
+    x = x.unsqueeze(-1) + Variable(torch.zeros(xs + [nr_mix]).to(x.device), requires_grad=False)    #want constant
     m2 = (means[:, :, :, 1, :] + coeffs[:, :, :, 0, :]
                 * x[:, :, :, 0, :]).view(xs[0], xs[1], xs[2], 1, nr_mix)
 
@@ -105,6 +105,7 @@ def to_one_hot(tensor, n, fill_with=1.):
     # we perform one hot encore with respect to the last axis
     one_hot = torch.FloatTensor(tensor.size() + (n,)).zero_()
     if tensor.is_cuda : one_hot = one_hot.cuda()
+    one_hot = one_hot.to(tensor.device)                 #add for mps
     one_hot.scatter_(len(tensor.size()), tensor.unsqueeze(-1), fill_with)
     return Variable(one_hot)
 
@@ -121,6 +122,7 @@ def sample_from_discretized_mix_logistic(l, nr_mix):
     # sample mixture indicator from softmax
     temp = torch.FloatTensor(logit_probs.size())
     if l.is_cuda : temp = temp.cuda()
+    temp = temp.to(l.device)                        #add for mps
     temp.uniform_(1e-5, 1. - 1e-5)
     temp = logit_probs.data - torch.log(- torch.log(temp))
     _, argmax = temp.max(dim=3)
@@ -137,6 +139,7 @@ def sample_from_discretized_mix_logistic(l, nr_mix):
     # we don't actually round to the nearest 8bit value when sampling
     u = torch.FloatTensor(means.size())
     if l.is_cuda : u = u.cuda()
+    u = u.to(l.device)                              #add for mps  
     u.uniform_(1e-5, 1. - 1e-5)
     u = Variable(u)
     x = means + torch.exp(log_scales) * (torch.log(u) - torch.log(1. - u))
@@ -173,7 +176,8 @@ def right_shift(x, pad=None):
     pad = nn.ZeroPad2d((1, 0, 0, 0)) if pad is None else pad
     return pad(x)
 
-
+"""
+#OG
 def sample(model, sample_batch_size, obs, sample_op):
     model.train(False)
     with torch.no_grad():
@@ -182,10 +186,25 @@ def sample(model, sample_batch_size, obs, sample_op):
         for i in range(obs[1]):
             for j in range(obs[2]):
                 data_v = data
-                out   = model(data_v, sample=True)
+                out   = model(data_v, sample=True)     
                 out_sample = sample_op(out)
                 data[:, :, i, j] = out_sample.data[:, :, i, j]
     return data
+#"""
+#"""
+def sample(model, sample_batch_size, obs, sample_op, class_labels):
+    model.train(False)
+    with torch.no_grad():
+        data = torch.zeros(sample_batch_size, obs[0], obs[1], obs[2])
+        data = data.to(next(model.parameters()).device)
+        for i in range(obs[1]):
+            for j in range(obs[2]):
+                data_v = data
+                out   = model(data_v, class_labels, sample=True)
+                out_sample = sample_op(out)
+                data[:, :, i, j] = out_sample.data[:, :, i, j]
+    return data
+#"""
 
 class mean_tracker:
     def __init__(self):
