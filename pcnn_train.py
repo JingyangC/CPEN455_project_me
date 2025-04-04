@@ -1,3 +1,6 @@
+import os
+os.environ["PYTORCH_ENABLE_MPS_FALLBACK"] = "1"     #mps unsupport weight norm operation
+
 import time
 import os
 import torch
@@ -124,6 +127,9 @@ if __name__ == '__main__':
     #If you are using ubuntu/linux/colab, and find that loading data is too slow, you can set num_workers to 1 or even bigger.
     kwargs = {'num_workers':0, 'pin_memory':True, 'drop_last':True}
 
+    #newly added
+    device = "mps"
+    
     # set data
     if "mnist" in args.dataset:
         ds_transforms = transforms.Compose([transforms.Resize((32, 32)), transforms.ToTensor(), rescaling, replicate_color_channel])
