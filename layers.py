@@ -130,12 +130,12 @@ class gated_resnet(nn.Module):
 
 
     def forward(self, og_x, a=None):
-        x = self.conv_input(self.nonlinearity(og_x))
+        x = self.conv_input(self.nonlinearity(og_x))        #by default, concat elu double # of channel and conv reduce channel?
         if a is not None :
-            x += self.nin_skip(self.nonlinearity(a))
+            x += self.nin_skip(self.nonlinearity(a))        #extra connection
         x = self.nonlinearity(x)
         x = self.dropout(x)
         x = self.conv_out(x)
-        a, b = torch.chunk(x, 2, dim=1)
+        a, b = torch.chunk(x, 2, dim=1)                     #split into 2 chunk along feature dimension
         c3 = a * F.sigmoid(b)
         return og_x + c3
