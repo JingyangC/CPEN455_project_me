@@ -38,7 +38,10 @@ class CPEN455Dataset(Dataset):
     def __len__(self):
         return len(self.samples)
 
-    def __getitem__(self, idx):
+    # never used 
+    """
+    #OG version
+    def __getitem__(self, idx):             
         img_path, category = self.samples[idx]
         if category in my_bidict.values():
             category_name = my_bidict.inverse[category]
@@ -52,6 +55,20 @@ class CPEN455Dataset(Dataset):
         if self.transform:
           image = self.transform(image)
         return image, category_name
+    """
+    
+    #new version, directly return int instead of class label string
+    def __getitem__(self, idx):
+        img_path, category = self.samples[idx]
+        # You can skip converting to a string and use the integer directly.
+        image = read_image(img_path)  # Reads the image as a tensor
+        image = image.type(torch.float32) / 255.  # Normalize to [0, 1]
+        if image.shape[0] == 1:
+            image = replicate_color_channel(image)
+        if self.transform:
+            image = self.transform(image)
+        # Return image and integer label (category)
+        return image, category
     
     def get_all_images(self, label):
         return [img for img, cat in self.samples if cat == label]

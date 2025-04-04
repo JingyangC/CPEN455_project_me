@@ -95,9 +95,24 @@ class PixelCNN(nn.Module):
         num_mix = 3 if self.input_channels == 1 else 10
         self.nin_out = nin(nr_filters, num_mix * nr_logistic_mix)
         self.init_padding = None
+        
+        #added for early fusion
+        self.embedding = nn.Embedding(4, 3)     # 4 classes, 16 based on gpt recommendation
 
 
-    def forward(self, x, sample=False):
+    #def forward(self, x, sample=False):    #OG
+    def forward(self, x, class_labels, sample=False):
+        """
+        #added early fusion
+        if sample == False or sample != False:
+            class_embedding = self.embedding(class_labels)
+            B, C, H, W = x.shape
+            class_embedding = class_embedding.view(B, 3, 1, 1)      # reshape embedding for broadcasting
+            #print(class_labels.shape)
+            #print(class_embedding.shape)    #[16, 3]
+            x = x + class_embedding                                  # Add to feature maps
+        #"""
+        
         # similar as done in the tf repo :
         if self.init_padding is not sample:
             xs = [int(y) for y in x.size()]
