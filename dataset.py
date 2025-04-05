@@ -38,7 +38,6 @@ class CPEN455Dataset(Dataset):
     def __len__(self):
         return len(self.samples)
 
-    # never used ?
     #"""
     #OG version
     def __getitem__(self, idx):             
