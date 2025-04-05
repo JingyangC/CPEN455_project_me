@@ -24,10 +24,31 @@ NUM_CLASSES = len(my_bidict)
 def get_label(model, model_input, device):
     # Write your code here, replace the random classifier with your trained model
     # and return the predicted label, which is a tensor of shape (batch_size,)
+    """
+    #OG
     answer = model(model_input, device)
     return answer
+    #"""
+    batch_size = model_input.size(0)
+    answer = torch.zeros(batch_size, device=device)
+    for b in range(batch_size):
+        max_p = 0
+        corresponding_label = 0
+        
+        sample = model_input[b].unsqueeze(0)  # Shape: (1, C, H, W)
+        for i in range(4):
+            class_tensor = torch.tensor([i], device=device)
+            model_out =  model(sample, class_tensor) #return model return x_out 
+            #tutorial thought, has error
+            #log_likelihood = torch.log(model_out) + discretized_mix_logistic_loss(sample, model_out)
+            #gpt recommend
+            log_likelihood = -discretized_mix_logistic_loss(sample, model_out)
+            if log_likelihood > max_p:
+                max_p = log_likelihood
+                corresponding_label = i
+        answer[b] = corresponding_label
+    return answer
 
-    #perform the calculation as in the slide?
     
 # End of your code
 
@@ -56,10 +77,25 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--mode', type=str,
                         default='validation', help='Mode for the dataset')
     
+    #"""
+    #added for convenient
+    parser.add_argument('-l', '--load_params', type=str, default=None,
+                        help='Restore training from previous model checkpoint?')
+    
+    parser.add_argument('-q', '--nr_resnet', type=int, default=1,
+                        help='Number of residual blocks per stage of the model')
+    parser.add_argument('-n', '--nr_filters', type=int, default=40,
+                        help='Number of filters to use across the model. Higher = larger model.')
+    parser.add_argument('-r', '--nr_logistic_mix', type=int, default=5,
+                        help='Number of logistic components in the mixture. Higher = more flexible model')
+    #"""
+    
     args = parser.parse_args()
     pprint(args.__dict__)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     kwargs = {'num_workers':0, 'pin_memory':True, 'drop_last':False}
+    
+    device = "mps"              #add for mps
 
     ds_transforms = transforms.Compose([transforms.Resize((32, 32)), rescaling])
     dataloader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
@@ -71,13 +107,23 @@ if __name__ == '__main__':
 
     #TODO:Begin of your code
     #You should replace the random classifier with your trained model
+    """
+    #OG code
     model = random_classifier(NUM_CLASSES)
+    #"""
+    model = PixelCNN(nr_resnet=args.nr_resnet, nr_filters=args.nr_filters, 
+                input_channels=3, nr_logistic_mix=args.nr_logistic_mix)
     #End of your code
     
     model = model.to(device)
     #Attention: the path of the model is fixed to './models/conditional_pixelcnn.pth'
     #You should save your model to this path
-    model_path = os.path.join(os.path.dirname(__file__), 'models/conditional_pixelcnn.pth')
+    
+    #OG
+    #model_path = os.path.join(os.path.dirname(__file__), 'models/conditional_pixelcnn.pth')
+    #NEW, For simplicity for now
+    model_path = args.load_params
+    
     if os.path.exists(model_path):
         model.load_state_dict(torch.load(model_path))
         print('model parameters loaded')
@@ -89,3 +135,17 @@ if __name__ == '__main__':
     print(f"Accuracy: {acc}")
         
         
+    """
+    class random_classifier(nn.Module):
+    def __init__(self, NUM_CLASSES):
+        super(random_classifier, self).__init__()
+        self.NUM_CLASSES = NUM_CLASSES
+        self.fc = nn.Linear(3, NUM_CLASSES)
+        print("Random classifier initialized")
+        # create a folder
+        if os.path.join(os.path.dirname(__file__), 'models') not in os.listdir():
+            os.mkdir(os.path.join(os.path.dirname(__file__), 'models'))
+        torch.save(self.state_dict(), os.path.join(os.path.dirname(__file__), 'models/conditional_pixelcnn.pth'))
+    def forward(self, x, device):
+        return torch.randint(0, self.NUM_CLASSES, (x.shape[0],)).to(device)
+    """

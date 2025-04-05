@@ -96,9 +96,12 @@ class PixelCNN(nn.Module):
         self.nin_out = nin(nr_filters, num_mix * nr_logistic_mix)
         self.init_padding = None
         
-        #added for early fusion
-        self.embedding = nn.Embedding(4, 3)     # 4 classes, 16 based on gpt recommendation
-
+        
+        # FiLM initialize
+        embedding_dim = 16
+        self.embedding = nn.Embedding(4, embedding_dim)     # 4 classes, 16 based on gpt recommendation
+        self.film_gen = FiLMGenerator(embedding_dim, n_channels=self.nr_filters)     #set 16 for now
+        
 
     #def forward(self, x, sample=False):    #OG
     def forward(self, x, class_labels, sample=False):
@@ -118,11 +121,13 @@ class PixelCNN(nn.Module):
             xs = [int(y) for y in x.size()]
             padding = Variable(torch.ones(xs[0], 1, xs[2], xs[3]), requires_grad=False)
             self.init_padding = padding.cuda() if x.is_cuda else padding
+            self.init_padding = self.init_padding.to(x.device)  #added for mps
 
         if sample :
             xs = [int(y) for y in x.size()]
             padding = Variable(torch.ones(xs[0], 1, xs[2], xs[3]), requires_grad=False)
             padding = padding.cuda() if x.is_cuda else padding
+            padding = padding.to(x.device)  #added for mps
             x = torch.cat((x, padding), 1)
 
         ###      UP PASS    ###
@@ -141,8 +146,19 @@ class PixelCNN(nn.Module):
                 ul_list += [self.downsize_ul_stream[i](ul_list[-1])]
 
         ###    DOWN PASS    ###
-        u  = u_list.pop()
+        u  = u_list.pop()               #stored features? why
         ul = ul_list.pop()
+        
+        #"""
+        # FiLM layer
+        # In forward():
+        class_embedding = self.embedding(class_labels)  # (B, embedding_dim)
+
+        # Suppose after the up pass you have a feature map `u` shaped (B, self.nr_filters, H, W).
+        gamma, beta = self.film_gen(class_embedding)  # each (B, nr_filters)
+        u = apply_film(u, gamma, beta)
+        ul = apply_film(ul, gamma, beta)
+        #"""
 
         for i in range(3):
             # resnet block
@@ -173,4 +189,28 @@ class random_classifier(nn.Module):
     def forward(self, x, device):
         return torch.randint(0, self.NUM_CLASSES, (x.shape[0],)).to(device)
     
-    
+
+# FiLM layer
+
+class FiLMGenerator(nn.Module):
+    def __init__(self, embedding_dim, n_channels):
+        super().__init__()
+        # MLP that outputs gamma and beta for each channel
+        self.film_fc = nn.Linear(embedding_dim, 2 * n_channels)
+
+    def forward(self, embedding):
+        # embedding is (B, embedding_dim)
+        gamma_beta = self.film_fc(embedding)  # shape (B, 2*C)
+        gamma, beta = torch.chunk(gamma_beta, 2, dim=1)  # each is (B, C)
+        return gamma, beta
+
+def apply_film(feature_map, gamma, beta):
+    # feature_map: (B, C, H, W)
+    B, C, H, W = feature_map.shape
+
+    # Reshape gamma, beta for broadcast: (B, C, 1, 1)
+    gamma = gamma.view(B, C, 1, 1)
+    beta = beta.view(B, C, 1, 1)
+
+    # scale and shift
+    return gamma * feature_map + beta
