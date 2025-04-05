@@ -209,6 +209,7 @@ if __name__ == '__main__':
         
         # decrease learning rate
         scheduler.step()
+        """
         train_or_test(model = model,
                       data_loader = test_loader,
                       optimizer = optimizer,
@@ -217,6 +218,7 @@ if __name__ == '__main__':
                       args = args,
                       epoch = epoch,
                       mode = 'test')
+        """
         
         train_or_test(model = model,
                       data_loader = val_loader,
