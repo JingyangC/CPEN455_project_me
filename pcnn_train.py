@@ -36,12 +36,10 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
         model_input = model_input.to(device)        #accomdate the device using 
         #class_labels = class_labels.to(device)    
 
-
-
         # Convert the list of string labels to a tensor of integer indices.
         # This assumes that my_bidict is accessible here.
         # class_indices = torch.tensor([my_bidict[label] for label in class_labels]).to(device)
-        class_indices = torch.tensor([my_bidict[label.strip()] for label in class_labels]).to(device)
+        class_indices = torch.tensor([my_bidict[label] for label in class_labels], dtype=torch.long).to(device)
         # Forward pass: pass both image and class_labels to the model.
         model_output = model(model_input, class_indices, sample=False)
         #"""

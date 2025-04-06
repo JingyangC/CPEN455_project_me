@@ -29,24 +29,56 @@ def get_label(model, model_input, device):
     answer = model(model_input, device)
     return answer
     #"""
+    #"""
+    # classification don't seem to be the issue
     batch_size = model_input.size(0)
     answer = torch.zeros(batch_size, device=device)
     for b in range(batch_size):
-        max_p = 0
+        # Make sure we start from a very small number:
+        max_p = float('-inf')       # not 0
+        # -discretized_mix_logistic_loss(...) is typically negative, (the loss is positive, so its negative is usually below zero)
         corresponding_label = 0
         
+        #print(f"model input min: {model_input.min()} and max: {model_input.max()}")
         sample = model_input[b].unsqueeze(0)  # Shape: (1, C, H, W)
-        for i in range(4):
+        for i in range(NUM_CLASSES):
             class_tensor = torch.tensor([i], device=device)
-            model_out =  model(sample, class_tensor) #return model return x_out 
+            model_out =  model(x=sample, class_labels=class_tensor) #return model return x_out 
+            #print(f"Label {i} -> Output norm: {model_out.norm().item()}")
+
             #tutorial thought, has error
             #log_likelihood = torch.log(model_out) + discretized_mix_logistic_loss(sample, model_out)
             #gpt recommend
+            #print(sample)      #sample is within range
+            #print(model_out)    #model_out is not within range
             log_likelihood = -discretized_mix_logistic_loss(sample, model_out)
+            #print(log_likelihood)
             if log_likelihood > max_p:
                 max_p = log_likelihood
                 corresponding_label = i
         answer[b] = corresponding_label
+    #"""
+    
+    """
+    batch_size = model_input.size(0)
+    log_likelihoods = torch.zeros(batch_size, NUM_CLASSES, device=device)
+        
+    with torch.no_grad():
+        for class_idx in range(NUM_CLASSES):
+            label = torch.full((batch_size,), class_idx, dtype=torch.long, device=device)
+                
+            output = model(model_input, label, sample=False)
+            #print(output)
+                
+            for i in range(batch_size):
+                single_input = model_input[i:i+1]
+                single_output = output[i:i+1]
+                nll = discretized_mix_logistic_loss(single_input, single_output)
+                log_likelihoods[i, class_idx] = -nll / np.prod(single_input.shape[1:])
+        
+    _, answer = torch.max(log_likelihoods, dim=1)
+    #"""
+    
     return answer
 
     

@@ -129,6 +129,8 @@ class PixelCNN(nn.Module):
             padding = padding.cuda() if x.is_cuda else padding
             padding = padding.to(x.device)  #added for mps
             x = torch.cat((x, padding), 1)
+            
+        print(f"input x norm: {x.norm().item()}")
 
         ###      UP PASS    ###
         x = x if sample else torch.cat((x, self.init_padding), 1)
@@ -149,6 +151,9 @@ class PixelCNN(nn.Module):
         u  = u_list.pop()               #stored features? why
         ul = ul_list.pop()
         
+        print(f"pre FiLM u norm: {u.norm().item()}")
+        print(f"pre FiLM ul x norm: {ul.norm().item()}")
+        
         #"""
         # FiLM layer
         # In forward():
@@ -156,9 +161,17 @@ class PixelCNN(nn.Module):
 
         # Suppose after the up pass you have a feature map `u` shaped (B, self.nr_filters, H, W).
         gamma, beta = self.film_gen(class_embedding)  # each (B, nr_filters)
+        
+        #print(f"gamma norm: {gamma.norm().item()}")
+        #print(f"beta norm: {beta.norm().item()}")
         u = apply_film(u, gamma, beta)
         ul = apply_film(ul, gamma, beta)
         #"""
+        
+        #print(f"post u norm: {u.norm().item()}")
+        #print(f"post ul x norm: {ul.norm().item()}")
+        print("post FiLM u min:", u.min().item(), "ul max:", u.max().item())
+        print("post FiLM ul min:", ul.min().item(), "ul max:", ul.max().item())
 
         for i in range(3):
             # resnet block
@@ -169,7 +182,11 @@ class PixelCNN(nn.Module):
                 u  = self.upsize_u_stream[i](u)
                 ul = self.upsize_ul_stream[i](ul)
 
+        #print(ul)
+        print("before elu: ul min:", ul.min().item(), "ul max:", ul.max().item())
+        print(F.elu(ul).norm())       #ISSUE: ul value is too extreme that no matter whether apply FiLM or not, or apply different input, after elu, full of -1
         x_out = self.nin_out(F.elu(ul))
+        #print(x_out)
 
         assert len(u_list) == len(ul_list) == 0, pdb.set_trace()
 
