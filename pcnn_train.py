@@ -36,11 +36,11 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
         #"""
         #"""
         # new code passing class label, conditional
-        model_input, class_labels = item        #new
+        model_input, class_labels = item        #new, class_labels are like string, "Class0"
         model_input = model_input.to(device)        #accomdate the device using 
-        class_labels = class_labels.to(device)      #new
         # Forward pass: pass both image and class_labels to the model.
-        model_output = model(model_input, class_labels, sample=False)
+        class_indices = torch.tensor([my_bidict[label] for label in class_labels]).to(device)
+        model_output = model(model_input, class_indices, sample=False)
         #"""
         
         loss = loss_op(model_input, model_output)

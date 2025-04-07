@@ -131,6 +131,7 @@ class PixelCNN(nn.Module):
         #print(x.device)     #okay
         #print(self.init_padding.device) # not okay
 
+        print(f"input x norm: {x.norm().item()}")
         ###      UP PASS    ###
         x = x if sample else torch.cat((x, self.init_padding), 1)
         u_list  = [self.u_init(x)]
@@ -149,6 +150,11 @@ class PixelCNN(nn.Module):
         ###    DOWN PASS    ###
         u  = u_list.pop()
         ul = ul_list.pop()
+        
+        print(f"last u norm: {u.norm().item()}")
+        print(f"last u min: {u.min().item(), "ul max:", u.max().item()}")
+        print(f"last ul x norm: {ul.norm().item()}")
+        print(f"last ul min: {ul.min().item(), "ul max:", ul.max().item()}")
 
         for i in range(3):
             # resnet block
@@ -159,6 +165,8 @@ class PixelCNN(nn.Module):
                 u  = self.upsize_u_stream[i](u)
                 ul = self.upsize_ul_stream[i](ul)
 
+        print(f"before elu: ul min: {ul.min().item(), "ul max:", ul.max().item()}")
+        print(f"after elu: ul min: {F.elu(ul).min().item(), "ul max:", F.elu(ul).max().item()}")
         x_out = self.nin_out(F.elu(ul))
 
         assert len(u_list) == len(ul_list) == 0, pdb.set_trace()

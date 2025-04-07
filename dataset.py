@@ -39,7 +39,7 @@ class CPEN455Dataset(Dataset):
         return len(self.samples)
 
     # never used 
-    """
+    #"""
     #OG version
     def __getitem__(self, idx):             
         img_path, category = self.samples[idx]
@@ -55,8 +55,9 @@ class CPEN455Dataset(Dataset):
         if self.transform:
           image = self.transform(image)
         return image, category_name
-    """
+    #"""
     
+    """
     #new version, directly return int instead of class label string
     def __getitem__(self, idx):
         img_path, category = self.samples[idx]
@@ -69,6 +70,7 @@ class CPEN455Dataset(Dataset):
             image = self.transform(image)
         # Return image and integer label (category)
         return image, category
+    """
     
     def get_all_images(self, label):
         return [img for img, cat in self.samples if cat == label]
