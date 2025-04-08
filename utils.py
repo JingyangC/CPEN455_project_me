@@ -105,7 +105,7 @@ def to_one_hot(tensor, n, fill_with=1.):
     # we perform one hot encore with respect to the last axis
     one_hot = torch.FloatTensor(tensor.size() + (n,)).zero_()
     if tensor.is_cuda : one_hot = one_hot.cuda()
-    one_hot = one_hot.to(tensor.device)                 #add for mps
+    #one_hot = one_hot.to(tensor.device)                 #add for mps
     one_hot.scatter_(len(tensor.size()), tensor.unsqueeze(-1), fill_with)
     return Variable(one_hot)
 
@@ -122,7 +122,7 @@ def sample_from_discretized_mix_logistic(l, nr_mix):
     # sample mixture indicator from softmax
     temp = torch.FloatTensor(logit_probs.size())
     if l.is_cuda : temp = temp.cuda()
-    temp = temp.to(l.device)                        #add for mps
+    #temp = temp.to(l.device)                        #add for mps
     temp.uniform_(1e-5, 1. - 1e-5)
     temp = logit_probs.data - torch.log(- torch.log(temp))
     _, argmax = temp.max(dim=3)
@@ -139,7 +139,7 @@ def sample_from_discretized_mix_logistic(l, nr_mix):
     # we don't actually round to the nearest 8bit value when sampling
     u = torch.FloatTensor(means.size())
     if l.is_cuda : u = u.cuda()
-    u = u.to(l.device)                              #add for mps  
+    #u = u.to(l.device)                              #add for mps  
     u.uniform_(1e-5, 1. - 1e-5)
     u = Variable(u)
     x = means + torch.exp(log_scales) * (torch.log(u) - torch.log(1. - u))

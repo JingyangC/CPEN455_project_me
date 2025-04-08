@@ -130,7 +130,7 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     kwargs = {'num_workers':0, 'pin_memory':True, 'drop_last':False}
     
-    device = "mps"              #add for mps
+    #device = "mps"              #add for mps
 
     ds_transforms = transforms.Compose([transforms.Resize((32, 32)), rescaling])
     dataloader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
