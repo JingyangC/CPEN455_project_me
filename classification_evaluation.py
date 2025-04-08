@@ -29,37 +29,39 @@ def get_label(model, model_input, device):
     answer = model(model_input, device)
     return answer
     #"""
-    #"""
+    """
     # classification don't seem to be the issue
-    batch_size = model_input.size(0)
-    answer = torch.zeros(batch_size, device=device)
-    for b in range(batch_size):
-        # Make sure we start from a very small number:
-        max_p = float('-inf')       # not 0
-        # -discretized_mix_logistic_loss(...) is typically negative, (the loss is positive, so its negative is usually below zero)
-        corresponding_label = 0
-        
-        #print(f"model input min: {model_input.min()} and max: {model_input.max()}")
-        sample = model_input[b].unsqueeze(0)  # Shape: (1, C, H, W)
-        for i in range(NUM_CLASSES):
-            class_tensor = torch.tensor([i], device=device)
-            model_out =  model(x=sample, class_labels=class_tensor) #return model return x_out 
-            #print(f"Label {i} -> Output norm: {model_out.norm().item()}")
+    with torch.no_grad():
+        batch_size = model_input.size(0)
+        answer = torch.zeros(batch_size, device=device)
+        for b in range(batch_size):
+            # Make sure we start from a very small number:
+            max_p = float('-inf')       # not 0
+            # -discretized_mix_logistic_loss(...) is typically negative, (the loss is positive, so its negative is usually below zero)
+            corresponding_label = 0
+            
+            #print(f"model input min: {model_input.min()} and max: {model_input.max()}")
+            sample = model_input[b].unsqueeze(0)  # Shape: (1, C, H, W)
+            for i in range(NUM_CLASSES):
+                class_tensor = torch.tensor([i], device=device)
+                model_out =  model(x=sample, class_labels=class_tensor) #return model return x_out 
+                #print(f"Label {i} -> Output norm: {model_out.norm().item()}")
 
-            #tutorial thought, has error
-            #log_likelihood = torch.log(model_out) + discretized_mix_logistic_loss(sample, model_out)
-            #gpt recommend
-            #print(sample)      #sample is within range
-            #print(model_out)    #model_out is not within range
-            log_likelihood = -discretized_mix_logistic_loss(sample, model_out)
-            #print(log_likelihood)
-            if log_likelihood > max_p:
-                max_p = log_likelihood
-                corresponding_label = i
-        answer[b] = corresponding_label
+                #tutorial thought, has error
+                #log_likelihood = torch.log(model_out) + discretized_mix_logistic_loss(sample, model_out)
+                #gpt recommend
+                #print(sample)      #sample is within range
+                #print(model_out)    #model_out is not within range
+                log_likelihood = -discretized_mix_logistic_loss(sample, model_out)      # for classification this is good enough (proportion), for actual prob need to follow tutorial slide
+                print(f"loglikelihood for label {i}:", log_likelihood.item(), "\n")
+                if log_likelihood > max_p:
+                    max_p = log_likelihood
+                    corresponding_label = i
+                    
+            answer[b] = corresponding_label
     #"""
     
-    """
+    #"""
     batch_size = model_input.size(0)
     log_likelihoods = torch.zeros(batch_size, NUM_CLASSES, device=device)
         
@@ -77,6 +79,7 @@ def get_label(model, model_input, device):
                 log_likelihoods[i, class_idx] = -nll / np.prod(single_input.shape[1:])
         
     _, answer = torch.max(log_likelihoods, dim=1)
+    #print(answer)
     #"""
     
     return answer
@@ -157,7 +160,11 @@ if __name__ == '__main__':
     model_path = args.load_params
     
     if os.path.exists(model_path):
-        model.load_state_dict(torch.load(model_path))
+        #OG
+        #model.load_state_dict(torch.load(model_path))
+        #new
+        model.load_state_dict(torch.load(model_path, map_location=device))
+
         print('model parameters loaded')
     else:
         raise FileNotFoundError(f"Model file not found at {model_path}")
@@ -166,6 +173,8 @@ if __name__ == '__main__':
     acc = classifier(model = model, data_loader = dataloader, device = device)
     print(f"Accuracy: {acc}")
         
+
+
         
     """
     class random_classifier(nn.Module):

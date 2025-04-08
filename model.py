@@ -130,7 +130,7 @@ class PixelCNN(nn.Module):
             padding = padding.to(x.device)  #added for mps
             x = torch.cat((x, padding), 1)
             
-        print(f"input x norm: {x.norm().item()}")
+        #print(f"input x norm: {x.norm().item()}")
 
         ###      UP PASS    ###
         x = x if sample else torch.cat((x, self.init_padding), 1)
@@ -151,8 +151,8 @@ class PixelCNN(nn.Module):
         u  = u_list.pop()               #stored features? why
         ul = ul_list.pop()
         
-        print(f"pre FiLM u norm: {u.norm().item()}")
-        print(f"pre FiLM ul x norm: {ul.norm().item()}")
+        #print(f"pre FiLM u norm: {u.norm().item()}")
+        #print(f"pre FiLM ul x norm: {ul.norm().item()}")
         
         #"""
         # FiLM layer
@@ -170,8 +170,8 @@ class PixelCNN(nn.Module):
         
         #print(f"post u norm: {u.norm().item()}")
         #print(f"post ul x norm: {ul.norm().item()}")
-        print("post FiLM u min:", u.min().item(), "ul max:", u.max().item())
-        print("post FiLM ul min:", ul.min().item(), "ul max:", ul.max().item())
+        #print("post FiLM u min:", u.min().item(), "ul max:", u.max().item())
+        #print("post FiLM ul min:", ul.min().item(), "ul max:", ul.max().item())
 
         for i in range(3):
             # resnet block
@@ -183,10 +183,10 @@ class PixelCNN(nn.Module):
                 ul = self.upsize_ul_stream[i](ul)
 
         #print(ul)
-        print("before elu: ul min:", ul.min().item(), "ul max:", ul.max().item())
-        print(F.elu(ul).norm())       #ISSUE: ul value is too extreme that no matter whether apply FiLM or not, or apply different input, after elu, full of -1
+        #print("before elu: ul min:", ul.min().item(), "ul max:", ul.max().item())
+        #print("after elu norm", F.elu(ul).norm().item())       #ISSUE: ul value is too extreme that no matter whether apply FiLM or not, or apply different input, after elu, full of -1
         x_out = self.nin_out(F.elu(ul))
-        #print(x_out)
+        #print("x_out min:", ul.min().item(), " max:", ul.max().item())
 
         assert len(u_list) == len(ul_list) == 0, pdb.set_trace()
 
