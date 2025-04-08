@@ -98,9 +98,10 @@ class PixelCNN(nn.Module):
         
         
         # FiLM initialize
-        embedding_dim = 16
-        self.embedding = nn.Embedding(4, embedding_dim)     # 4 classes, 16 based on gpt recommendation
-        self.film_gen = FiLMGenerator(embedding_dim, n_channels=self.nr_filters)     #set 16 for now
+        #embedding_dim = 16
+        embedding_dim = nr_filters
+        self.embedding = nn.Embedding(4, embedding_dim)     # 4 classes, 
+        self.film_gen = FiLMGenerator(embedding_dim, n_channels=self.nr_filters)     
         
 
     #def forward(self, x, sample=False):    #OG
