@@ -142,7 +142,7 @@ if __name__ == '__main__':
     kwargs = {'num_workers':0, 'pin_memory':True, 'drop_last':True}
 
     #newly added for mps
-    device = "mps"
+    #device = "mps"
     
     # set data
     if "mnist" in args.dataset:
