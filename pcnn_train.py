@@ -172,16 +172,32 @@ if __name__ == '__main__':
             raise Exception('{} dataset not in {cifar10, cifar100}'.format(args.dataset))
     
     elif "cpen455" in args.dataset:
+        """
+        # OG transform
         ds_transforms = transforms.Compose([transforms.Resize((32, 32)), rescaling])
+        #"""
+        # New data transformation
+        train_transforms = transforms.Compose([
+            # The order of transformations matters:
+            transforms.Resize((32, 32)),             # or your desired size
+            transforms.RandomHorizontalFlip(p=0.5),  # randomly flip images
+            transforms.RandomRotation(degrees=15),   # randomly rotate images
+            transforms.ColorJitter(brightness=0.2, contrast=0.2,
+                                saturation=0.2, hue=0.1), 
+            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.9, 1.1)),
+            rescaling  # whatever your custom function is for re-scaling
+        ])
+        test_transform = transforms.Compose([transforms.Resize((32, 32)), rescaling])
+        
         train_loader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
                                                                   mode = 'train', 
-                                                                  transform=ds_transforms), 
+                                                                  transform=train_transforms), 
                                                    batch_size=args.batch_size, 
                                                    shuffle=True, 
                                                    **kwargs)
         test_loader  = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
                                                                   mode = 'test', 
-                                                                  transform=ds_transforms), 
+                                                                  transform=train_loader), 
                                                    batch_size=args.batch_size, 
                                                    shuffle=True, 
                                                    **kwargs)
