@@ -140,7 +140,7 @@ class gated_resnet(nn.Module):
         
         # New: Apply FiLM modulation if a conditional signal is provided.
         if resnet_cond != None:
-            """
+            #"""
             # The FiLM generator should output a tensor with 2*num_filters dimensions (for gamma and beta)
             gamma, beta = self.film_generator(resnet_cond)
             # Reshape to (B, num_filters, 1, 1) so that broadcasting over spatial dims works
@@ -148,8 +148,10 @@ class gated_resnet(nn.Module):
             beta  = beta.unsqueeze(-1).unsqueeze(-1)
             x = gamma * x + beta
             #"""
+            """
             gamma, beta = self.film_generator(resnet_cond)
             self.film_generator.apply_film(x, gamma, beta)
+            """
             
         x = self.nonlinearity(x)
         x = self.dropout(x)
