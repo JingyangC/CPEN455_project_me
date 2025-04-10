@@ -3,25 +3,25 @@ from layers import *
 
 
 class PixelCNNLayer_up(nn.Module):
-    def __init__(self, nr_resnet, nr_filters, resnet_nonlinearity, film_generator): # added FiLM generator
+    def __init__(self, nr_resnet, nr_filters, resnet_nonlinearity): 
         super(PixelCNNLayer_up, self).__init__()
         self.nr_resnet = nr_resnet
         # stream from pixels above
         self.u_stream = nn.ModuleList([gated_resnet(nr_filters, down_shifted_conv2d,
-                                        resnet_nonlinearity, skip_connection=0, film_generator=film_generator) # added FiLM generator
+                                        resnet_nonlinearity, skip_connection=0) 
                                             for _ in range(nr_resnet)])
 
         # stream from pixels above and to thes left
         self.ul_stream = nn.ModuleList([gated_resnet(nr_filters, down_right_shifted_conv2d,
-                                        resnet_nonlinearity, skip_connection=1, film_generator=film_generator) # added FiLM generator
+                                        resnet_nonlinearity, skip_connection=1) 
                                             for _ in range(nr_resnet)])
 
     def forward(self, u, ul, resnet_cond):
         u_list, ul_list = [], []
 
         for i in range(self.nr_resnet):
-            u  = self.u_stream[i](u, resnet_cond=resnet_cond)           # feed FiLM generator here
-            ul = self.ul_stream[i](ul, a=u, resnet_cond=resnet_cond)    # feed FiLM generator here
+            u  = self.u_stream[i](u, resnet_cond=resnet_cond)           #condtion label
+            ul = self.ul_stream[i](ul, a=u, resnet_cond=resnet_cond)   
             u_list  += [u]
             ul_list += [ul]
 
@@ -29,17 +29,17 @@ class PixelCNNLayer_up(nn.Module):
 
 
 class PixelCNNLayer_down(nn.Module):
-    def __init__(self, nr_resnet, nr_filters, resnet_nonlinearity, film_generator):     # add FiLM generator
+    def __init__(self, nr_resnet, nr_filters, resnet_nonlinearity):     
         super(PixelCNNLayer_down, self).__init__()
         self.nr_resnet = nr_resnet
         # stream from pixels above
         self.u_stream  = nn.ModuleList([gated_resnet(nr_filters, down_shifted_conv2d,
-                                        resnet_nonlinearity, skip_connection=1, film_generator=film_generator)      # add FiLM generator
+                                        resnet_nonlinearity, skip_connection=1)      
                                             for _ in range(nr_resnet)])
 
         # stream from pixels above and to thes left
         self.ul_stream = nn.ModuleList([gated_resnet(nr_filters, down_right_shifted_conv2d,
-                                        resnet_nonlinearity, skip_connection=2, film_generator=film_generator)
+                                        resnet_nonlinearity, skip_connection=2)
                                             for _ in range(nr_resnet)])
 
     def forward(self, u, ul, u_list, ul_list, resnet_cond):
@@ -65,16 +65,19 @@ class PixelCNN(nn.Module):
         self.right_shift_pad = nn.ZeroPad2d((1, 0, 0, 0))
         self.down_shift_pad  = nn.ZeroPad2d((0, 0, 1, 0))
         
+        """
+        #old shared 
         # Create a global FiLM generator, gated resnet (for example, a small two-layer network)
         # Ensure that its output dimension is 2 * nr_filters.
         film_generator = FiLMGenerator(embedding_dim=nr_filters, n_channels=nr_filters)
+        """
 
         down_nr_resnet = [nr_resnet] + [nr_resnet + 1] * 2
         self.down_layers = nn.ModuleList([PixelCNNLayer_down(down_nr_resnet[i], nr_filters,
-                                                self.resnet_nonlinearity, film_generator) for i in range(3)])
+                                                self.resnet_nonlinearity) for i in range(3)])
 
         self.up_layers   = nn.ModuleList([PixelCNNLayer_up(nr_resnet, nr_filters,
-                                                self.resnet_nonlinearity, film_generator) for _ in range(3)])
+                                                self.resnet_nonlinearity) for _ in range(3)])
 
         self.downsize_u_stream  = nn.ModuleList([down_shifted_conv2d(nr_filters, nr_filters,
                                                     stride=(2,2)) for _ in range(2)])
@@ -104,7 +107,7 @@ class PixelCNN(nn.Module):
         # FiLM initialize for mid fusion
         embedding_dim = self.nr_filters
         self.embedding = nn.Embedding(4, embedding_dim)     # 4 classes
-        self.film_gen = FiLMGenerator(embedding_dim, n_channels=self.nr_filters)     #set 16 for now
+        #self.film_gen = FiLMGenerator(embedding_dim, n_channels=self.nr_filters)     #set 16 for now
         
         
         

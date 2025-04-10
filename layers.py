@@ -116,7 +116,7 @@ skip connection parameter : 0 = no skip connection
                             2 = skip connection where skip input size === 2 * input size
 '''
 class gated_resnet(nn.Module):
-    def __init__(self, num_filters, conv_op, nonlinearity=concat_elu, skip_connection=0, film_generator=None):      #added FiLM
+    def __init__(self, num_filters, conv_op, nonlinearity=concat_elu, skip_connection=0):     
         super(gated_resnet, self).__init__()
         self.skip_connection = skip_connection
         self.nonlinearity = nonlinearity
@@ -127,10 +127,31 @@ class gated_resnet(nn.Module):
 
         self.dropout = nn.Dropout2d(0.5)
         self.conv_out = conv_op(2 * num_filters, 2 * num_filters)
-        
+        """
+        #shared weight
         # Optionally provide a FiLM generator (e.g., a simple two-layer net) for the block.
         # This could be shared across blocks or each block could have its own.
         self.film_generator = film_generator  
+        """
+        
+        """
+        #note for inject non-linear
+        Without any nonlinearity, the FiLM parameters would be just a single affine transform of your embedding. 
+        That can be okay for some applications, but usually you want a more flexible function, 
+        hence the ReLU (or ELU, etc.) in between.
+        """
+        # A small FiLM generator for this block, for example:
+        self.film_generator = nn.Sequential(
+            nn.Linear(num_filters, num_filters * 2),  # output 2*num_filters = gamma, beta
+            nn.ELU(),       
+            nn.Linear(num_filters * 2, 2 * num_filters)  # again produce gamma, beta
+        )
+
+        # Initialize gamma to ~1, beta to ~0
+        for m in self.film_generator.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight)
+                nn.init.constant_(m.bias, 0)
 
 
     def forward(self, og_x, a=None, resnet_cond=None):
@@ -142,7 +163,9 @@ class gated_resnet(nn.Module):
         if resnet_cond != None:
             #"""
             # The FiLM generator should output a tensor with 2*num_filters dimensions (for gamma and beta)
-            gamma, beta = self.film_generator(resnet_cond)
+            #gamma, beta = self.film_generator(resnet_cond)
+            film_params = self.film_generator(resnet_cond)  # shape (B, 2*num_filters)
+            gamma, beta = torch.chunk(film_params, 2, dim=1)
             # Reshape to (B, num_filters, 1, 1) so that broadcasting over spatial dims works
             gamma = gamma.unsqueeze(-1).unsqueeze(-1)
             beta  = beta.unsqueeze(-1).unsqueeze(-1)
