@@ -197,13 +197,13 @@ if __name__ == '__main__':
                                                    **kwargs)
         test_loader  = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
                                                                   mode = 'test', 
-                                                                  transform=train_loader), 
+                                                                  transform=test_transform), 
                                                    batch_size=args.batch_size, 
                                                    shuffle=True, 
                                                    **kwargs)
         val_loader  = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
                                                                   mode = 'validation', 
-                                                                  transform=ds_transforms), 
+                                                                  transform=test_transform), 
                                                    batch_size=args.batch_size, 
                                                    shuffle=True, 
                                                    **kwargs)
