@@ -180,7 +180,7 @@ if __name__ == '__main__':
         train_transforms = transforms.Compose([
             # The order of transformations matters:
             transforms.Resize((32, 32)),             # or your desired size
-            transforms.RandomHorizontalFlip(p=0.3),  # randomly flip images
+            #transforms.RandomHorizontalFlip(p=0.1),  # randomly flip images
             transforms.RandomRotation(degrees=15),   # randomly rotate images
             transforms.ColorJitter(brightness=0.2, contrast=0.2,
                                 saturation=0.2, hue=0.1), 
@@ -190,7 +190,7 @@ if __name__ == '__main__':
         test_transform = transforms.Compose([transforms.Resize((32, 32)), rescaling])
         
         train_loader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
-                                                                  mode = 'train', 
+                                                                  mode = 'train',
                                                                   transform=train_transforms), 
                                                    batch_size=args.batch_size, 
                                                    shuffle=True, 
