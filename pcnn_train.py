@@ -261,9 +261,15 @@ if __name__ == '__main__':
                       mode = 'val')
         
         if epoch % args.sampling_interval == 0:
-            print('......sampling......')
+            """
+            # single class
             # new, added for condition
             class_labels = torch.full((args.sample_batch_size, ), 0, dtype=torch.int64, device=device)
+            #"""
+            # new, uniform class label
+            num_classes = 4
+            class_labels = torch.arange(args.sample_batch_size, device=device) % num_classes
+            
             sample_t = sample(model, args.sample_batch_size, args.obs, sample_op, class_labels)
             #sample_t = sample(model, args.sample_batch_size, args.obs, sample_op)   #OG
             sample_t = rescaling_inv(sample_t)
