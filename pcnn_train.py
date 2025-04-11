@@ -184,7 +184,7 @@ if __name__ == '__main__':
             transforms.RandomRotation(degrees=15),   # randomly rotate images
             transforms.ColorJitter(brightness=0.2, contrast=0.2,
                                 saturation=0.2, hue=0.1), 
-            transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.9, 1.1)),
+            #transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.9, 1.1)),     #edge translation too much?
             rescaling  # whatever your custom function is for re-scaling
         ])
         test_transform = transforms.Compose([transforms.Resize((32, 32)), rescaling])
@@ -262,8 +262,15 @@ if __name__ == '__main__':
         
         if epoch % args.sampling_interval == 0:
             print('......sampling......')
+            """
+            # single class
             # new, added for condition
             class_labels = torch.full((args.sample_batch_size, ), 0, dtype=torch.int64, device=device)
+            #"""
+            # new, uniform class label
+            num_classes = 4
+            class_labels = torch.arange(args.sample_batch_size, device=device) % num_classes
+            
             sample_t = sample(model, args.sample_batch_size, args.obs, sample_op, class_labels)
             #sample_t = sample(model, args.sample_batch_size, args.obs, sample_op)   #OG
             sample_t = rescaling_inv(sample_t)
