@@ -73,10 +73,10 @@ class PixelCNN(nn.Module):
                                                 self.resnet_nonlinearity) for _ in range(3)])
 
         self.downsize_u_stream  = nn.ModuleList([down_shifted_conv2d(nr_filters, nr_filters,
-                                                    stride=(2,2), norm='batch_norm') for _ in range(2)])
+                                                    stride=(2,2), norm='weight_norm') for _ in range(2)])
 
         self.downsize_ul_stream = nn.ModuleList([down_right_shifted_conv2d(nr_filters,
-                                                    nr_filters, stride=(2,2), norm='batch_norm') for _ in range(2)])
+                                                    nr_filters, stride=(2,2), norm='weight_norm') for _ in range(2)])
 
         self.upsize_u_stream  = nn.ModuleList([down_shifted_deconv2d(nr_filters, nr_filters,
                                                     stride=(2,2)) for _ in range(2)])
@@ -85,12 +85,12 @@ class PixelCNN(nn.Module):
                                                     nr_filters, stride=(2,2)) for _ in range(2)])
 
         self.u_init = down_shifted_conv2d(input_channels + 1, nr_filters, filter_size=(2,3),
-                        shift_output_down=True, norm='batch_norm')
+                        shift_output_down=True, norm='weight_norm')
 
         self.ul_init = nn.ModuleList([down_shifted_conv2d(input_channels + 1, nr_filters,
-                                            filter_size=(1,3), shift_output_down=True, norm='batch_norm'),
+                                            filter_size=(1,3), shift_output_down=True, norm='weight_norm'),
                                        down_right_shifted_conv2d(input_channels + 1, nr_filters,
-                                            filter_size=(2,1), shift_output_right=True, norm='batch_norm')])
+                                            filter_size=(2,1), shift_output_right=True, norm='weight_norm')])
 
         num_mix = 3 if self.input_channels == 1 else 10
         self.nin_out = nin(nr_filters, num_mix * nr_logistic_mix)
