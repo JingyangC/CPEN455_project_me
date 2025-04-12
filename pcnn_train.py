@@ -336,6 +336,7 @@ if __name__ == '__main__':
                       mode = 'val')
         
         if epoch % args.sampling_interval == 0:
+            print("sampling...")
             """
             # single class
             # new, added for condition

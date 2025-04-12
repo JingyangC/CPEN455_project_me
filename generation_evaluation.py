@@ -71,7 +71,7 @@ if __name__ == "__main__":
     BATCH_SIZE=128
     device = "cuda" if torch.cuda.is_available() else "cpu"
     
-    device = "mps"      #add for mps
+    #device = "mps"      #add for mps
     
     if not os.path.exists(gen_data_dir):
         os.makedirs(gen_data_dir)
@@ -91,7 +91,7 @@ if __name__ == "__main__":
                 input_channels=3, nr_logistic_mix=args.nr_logistic_mix)
     model = model.to(device)
     model = model.eval()
-    model.device = "mps"        #added for mps, need same for cuda?
+    #model.device = "mps"        #added for mps, need same for cuda?
 
     if args.load_params:
         #OG
