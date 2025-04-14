@@ -16,7 +16,7 @@ from pytorch_fid.fid_score import calculate_fid_given_paths
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR  #added for learning rate
 
 NUM_CLASSES = 4
-TEST_ACC_EPOCH = 10
+TEST_ACC_EPOCH = 1
 def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, mode = 'training'):
     if mode == 'training':
         model.train()
@@ -371,7 +371,7 @@ if __name__ == '__main__':
                 wandb.log({"samples": sample_result,
                             "FID": fid_score})
         
-        if (epoch + 1) % args.save_interval == 0: 
+        if (epoch) % args.save_interval == 0 and epoch != 0: 
             if not os.path.exists("models"):
                 os.makedirs("models")
             torch.save(model.state_dict(), 'models/{}_{}.pth'.format(model_name, epoch))
