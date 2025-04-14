@@ -13,7 +13,10 @@ from pprint import pprint
 import argparse
 from pytorch_fid.fid_score import calculate_fid_given_paths
 
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR  #added for learning rate
 
+NUM_CLASSES = 4
+TEST_ACC_EPOCH = 10
 def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, mode = 'training'):
     if mode == 'training':
         model.train()
@@ -22,6 +25,9 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
         
     deno =  args.batch_size * np.prod(args.obs) * np.log(2.)        
     loss_tracker = mean_tracker()
+    
+    #new
+    classification_acc_tracker = ratio_tracker()
     
     for batch_idx, item in enumerate(tqdm(data_loader)):
         """
@@ -50,10 +56,80 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()            #update optimizer, must be at the end
+            
+        if epoch % TEST_ACC_EPOCH == 0 and mode == "val":
+            model.eval()
+            answer = get_label(model, model_input, device)
+            correct_num = torch.sum(answer == class_indices)
+            classification_acc_tracker.update(correct_num.item(), model_input.shape[0])
         
     if args.en_wandb:
         wandb.log({mode + "-Average-BPD" : loss_tracker.get_mean()})
         wandb.log({mode + "-epoch": epoch})
+        if epoch % TEST_ACC_EPOCH == 0 and mode == "val":
+             wandb.log({mode + "classification acc": classification_acc_tracker.get_ratio()})
+             
+def get_label(model, model_input, device):
+    # Write your code here, replace the random classifier with your trained model
+    # and return the predicted label, which is a tensor of shape (batch_size,)
+    """
+    #OG
+    answer = model(model_input, device)
+    return answer
+    #"""
+    """
+    # classification don't seem to be the issue
+    with torch.no_grad():
+        batch_size = model_input.size(0)
+        answer = torch.zeros(batch_size, device=device)
+        for b in range(batch_size):
+            # Make sure we start from a very small number:
+            max_p = float('-inf')       # not 0
+            # -discretized_mix_logistic_loss(...) is typically negative, (the loss is positive, so its negative is usually below zero)
+            corresponding_label = 0
+             
+            #print(f"model input min: {model_input.min()} and max: {model_input.max()}")
+            sample = model_input[b].unsqueeze(0)  # Shape: (1, C, H, W)
+            for i in range(NUM_CLASSES):
+                class_tensor = torch.tensor([i], device=device)
+                model_out =  model(x=sample, class_labels=class_tensor) #return model return x_out 
+                #print(f"Label {i} -> Output norm: {model_out.norm().item()}")
+ 
+                #tutorial thought, has error
+                #log_likelihood = torch.log(model_out) + discretized_mix_logistic_loss(sample, model_out)
+                #gpt recommend
+                #print(sample)      #sample is within range
+                #print(model_out)    #model_out is not within range
+                log_likelihood = -discretized_mix_logistic_loss(sample, model_out)      # for classification this is good enough (proportion), for actual prob need to follow tutorial slide
+                print(f"loglikelihood for label {i}:", log_likelihood.item(), "\n")
+                if log_likelihood > max_p:
+                    max_p = log_likelihood
+                    corresponding_label = i
+                     
+            answer[b] = corresponding_label
+    #"""
+     
+    #"""
+    batch_size = model_input.size(0)
+    log_likelihoods = torch.zeros(batch_size, NUM_CLASSES, device=device)
+         
+    with torch.no_grad():
+        for class_idx in range(NUM_CLASSES):
+            label = torch.full((batch_size,), class_idx, dtype=torch.long, device=device)
+                 
+            output = model(model_input, label, sample=False)
+            #print(output)
+                 
+            for i in range(batch_size):
+                single_input = model_input[i:i+1]
+                single_output = output[i:i+1]
+                nll = discretized_mix_logistic_loss(single_input, single_output)
+                log_likelihoods[i, class_idx] = -nll / np.prod(single_input.shape[1:])
+         
+    _, answer = torch.max(log_likelihoods, dim=1)
+    #print(answer)
+    #"""
+    return answer
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -172,25 +248,41 @@ if __name__ == '__main__':
             raise Exception('{} dataset not in {cifar10, cifar100}'.format(args.dataset))
     
     elif "cpen455" in args.dataset:
+        """
+        # OG transform
         ds_transforms = transforms.Compose([transforms.Resize((32, 32)), rescaling])
+        #"""
+        # New data transformation
+        train_transforms = transforms.Compose([
+            # The order of transformations matters:
+            transforms.Resize((32, 32)),             # or your desired size
+            transforms.RandomHorizontalFlip(p=0.1),  # randomly flip images
+            transforms.RandomRotation(degrees=10),   # randomly rotate images
+            transforms.ColorJitter(brightness=0.2, contrast=0.2,
+                                saturation=0.2, hue=0.1), 
+            #transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.9, 1.1)),
+            rescaling  # whatever your custom function is for re-scaling
+        ])
+        test_transform = transforms.Compose([transforms.Resize((32, 32)), rescaling])
+         
         train_loader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
-                                                                  mode = 'train', 
-                                                                  transform=ds_transforms), 
-                                                   batch_size=args.batch_size, 
-                                                   shuffle=True, 
-                                                   **kwargs)
+                                                                   mode = 'train', 
+                                                                   transform=train_transforms), 
+                                                    batch_size=args.batch_size, 
+                                                    shuffle=True, 
+                                                    **kwargs)
         test_loader  = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
-                                                                  mode = 'test', 
-                                                                  transform=ds_transforms), 
-                                                   batch_size=args.batch_size, 
-                                                   shuffle=True, 
-                                                   **kwargs)
+                                                                   mode = 'test', 
+                                                                   transform=test_transform), 
+                                                    batch_size=args.batch_size, 
+                                                    shuffle=True, 
+                                                    **kwargs)
         val_loader  = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
-                                                                  mode = 'validation', 
-                                                                  transform=ds_transforms), 
-                                                   batch_size=args.batch_size, 
-                                                   shuffle=True, 
-                                                   **kwargs)
+                                                                   mode = 'validation', 
+                                                                   transform=test_transform), 
+                                                    batch_size=args.batch_size, 
+                                                    shuffle=True, 
+                                                    **kwargs)
     else:
         raise Exception('{} dataset not in {mnist, cifar, cpen455}'.format(args.dataset))
     
@@ -209,7 +301,19 @@ if __name__ == '__main__':
         print('model parameters loaded')
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    """
+    # OG scheduler
     scheduler = lr_scheduler.StepLR(optimizer, step_size=1, gamma=args.lr_decay)
+    #"""
+    warmup_scheduler = LinearLR(optimizer, start_factor=0.1, end_factor=1.0, total_iters=15)
+
+    cosine_scheduler = CosineAnnealingLR(optimizer, T_max=args.max_epochs-10)
+
+    scheduler = SequentialLR(
+        optimizer, 
+        schedulers=[warmup_scheduler, cosine_scheduler], 
+        milestones=[10]
+    )
     
     for epoch in tqdm(range(args.max_epochs)):
         train_or_test(model = model, 
