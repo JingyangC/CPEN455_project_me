@@ -13,6 +13,7 @@ from pprint import pprint
 import argparse
 from pytorch_fid.fid_score import calculate_fid_given_paths
 
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR  #added for learning rate
 NUM_CLASSES = 4
 TEST_ACC_EPOCH = 10
 def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, mode = 'training'):
@@ -300,7 +301,19 @@ if __name__ == '__main__':
         print('model parameters loaded')
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    """
+    # OG scheduler
     scheduler = lr_scheduler.StepLR(optimizer, step_size=1, gamma=args.lr_decay)
+    #"""
+    warmup_scheduler = LinearLR(optimizer, start_factor=0.1, end_factor=1.0, total_iters=15)
+ 
+    cosine_scheduler = CosineAnnealingLR(optimizer, T_max=args.max_epochs-10)
+ 
+    scheduler = SequentialLR(
+        optimizer, 
+        schedulers=[warmup_scheduler, cosine_scheduler], 
+        milestones=[10]
+    )
     
     for epoch in tqdm(range(args.max_epochs)):
         train_or_test(model = model, 
