@@ -256,8 +256,9 @@ if __name__ == '__main__':
         train_transforms = transforms.Compose([
             # The order of transformations matters:
             transforms.Resize((32, 32)),             # or your desired size
-            transforms.RandomHorizontalFlip(p=0.1),  # randomly flip images
-            transforms.RandomRotation(degrees=10),   # randomly rotate images
+            #transforms.RandomHorizontalFlip(p=0.1),  # randomly flip images
+            #transforms.RandomRotation(degrees=10),   # randomly rotate images
+            transforms.RandomApply([transforms.RandomRotation(degrees=10)], p=0.2),
             transforms.ColorJitter(brightness=0.2, contrast=0.2,
                                 saturation=0.2, hue=0.1), 
             #transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.9, 1.1)),
