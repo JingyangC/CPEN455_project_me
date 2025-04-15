@@ -258,10 +258,11 @@ if __name__ == '__main__':
             transforms.Resize((32, 32)),             # or your desired size
             #transforms.RandomHorizontalFlip(p=0.1),  # randomly flip images
             #transforms.RandomRotation(degrees=10),   # randomly rotate images
+            transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
             transforms.RandomApply([transforms.RandomRotation(degrees=10)], p=0.2),
             transforms.ColorJitter(brightness=0.2, contrast=0.2,
                                 saturation=0.2, hue=0.1), 
-            #transforms.RandomAffine(degrees=0, translate=(0.1, 0.1), scale=(0.9, 1.1)),     #edge translation too much?
+            transforms.RandomApply(transforms.RandomAffine(degrees=0, translate=(0.05, 0.05), scale=(0.95, 1.05)), p = 0.2),     #edge translation too much?
             rescaling  # whatever your custom function is for re-scaling
         ])
         test_transform = transforms.Compose([transforms.Resize((32, 32)), rescaling])
@@ -301,7 +302,7 @@ if __name__ == '__main__':
         model.load_state_dict(torch.load(args.load_params))
         print('model parameters loaded')
 
-    optimizer = optim.Adam(model.parameters(), lr=args.lr)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=1e-5)       #weight decay for less overfit
     """
     # OG scheduler
     scheduler = lr_scheduler.StepLR(optimizer, step_size=1, gamma=args.lr_decay)
