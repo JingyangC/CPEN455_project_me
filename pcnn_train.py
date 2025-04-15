@@ -379,7 +379,7 @@ if __name__ == '__main__':
                 wandb.log({"samples": sample_result,
                             "FID": fid_score})
         
-        if (epoch + 1) % args.save_interval == 0: 
+        if (epoch) % args.save_interval == 0 and epoch != 0: 
             if not os.path.exists("models"):
                 os.makedirs("models")
             torch.save(model.state_dict(), 'models/{}_{}.pth'.format(model_name, epoch))
