@@ -258,7 +258,7 @@ if __name__ == '__main__':
             transforms.Resize((32, 32)),             # or your desired size
             #transforms.RandomHorizontalFlip(p=0.1),  # randomly flip images
             #transforms.RandomRotation(degrees=10),   # randomly rotate images
-            transforms.RandomCrop(32, padding=4, padding_mode='reflect'),
+            transforms.RandomApply(transforms.RandomCrop(32, padding=4, padding_mode='reflect'), p=0.5),
             transforms.RandomApply([transforms.RandomRotation(degrees=10)], p=0.2),
             transforms.ColorJitter(brightness=0.2, contrast=0.2,
                                 saturation=0.2, hue=0.1), 
