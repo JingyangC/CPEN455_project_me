@@ -21,7 +21,7 @@ import argparse
 # This is a demonstration of how to call the sample function, feel free to modify it
 # You should modify this sample function to get the generated images from your model
 # You should save the generated images to the gen_data_dir, which is fixed as 'samples'
-sample_op = lambda x : sample_from_discretized_mix_logistic(x, args.nr_logistic_mix)
+sample_op = lambda x : sample_from_discretized_mix_logistic(x, 150)
 def my_sample(model, gen_data_dir, sample_batch_size = 25, obs = (3,32,32), sample_op = sample_op):
     """
     #OG code
@@ -43,7 +43,6 @@ def my_sample(model, gen_data_dir, sample_batch_size = 25, obs = (3,32,32), samp
             sample_t = sample(model, sample_batch_size, obs, sample_op, class_labels)
             sample_t = rescaling_inv(sample_t)
             save_images(sample_t, os.path.join(gen_data_dir), label=label)
-        pass
     #"""
 # End of your code
 
@@ -52,17 +51,6 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--ref_data_dir', type=str,
                         default="data/test", help='Location for the dataset')
     
-    #"""
-    #added for convenient
-    parser.add_argument('-l', '--load_params', type=str, default=None,
-                        help='Restore training from previous model checkpoint?')
-    parser.add_argument('-q', '--nr_resnet', type=int, default=1,
-                        help='Number of residual blocks per stage of the model')
-    parser.add_argument('-n', '--nr_filters', type=int, default=40,
-                        help='Number of filters to use across the model. Higher = larger model.')
-    parser.add_argument('-m', '--nr_logistic_mix', type=int, default=5,
-                        help='Number of logistic components in the mixture. Higher = more flexible model')
-    #"""
     
     args = parser.parse_args()
     
@@ -70,8 +58,7 @@ if __name__ == "__main__":
     gen_data_dir = os.path.join(os.path.dirname(__file__), "samples")
     BATCH_SIZE=128
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    
-    #device = "mps"      #add for mps
+
     
     if not os.path.exists(gen_data_dir):
         os.makedirs(gen_data_dir)
@@ -87,19 +74,15 @@ if __name__ == "__main__":
     
     #"""
     #new 
-    model = PixelCNN(nr_resnet=args.nr_resnet, nr_filters=args.nr_filters, 
-                input_channels=3, nr_logistic_mix=args.nr_logistic_mix)
+    model = PixelCNN(nr_resnet=3, nr_filters=250, input_channels=3, nr_logistic_mix=150)
+    
+    model_path = os.path.join(os.path.dirname(__file__), 'models/conditional_pixelcnn.pth')
+    if os.path.exists(model_path):
+        model.load_state_dict(torch.load(model_path))
+        print('model parameters loaded')
     model = model.to(device)
     model = model.eval()
-    #model.device = "mps"        #added for mps, need same for cuda?
-
-    if args.load_params:
-        #OG
-        #model.load_state_dict(torch.load(args.load_params))
-        #new
-        model.load_state_dict(torch.load(args.load_params, map_location=device))
-        print('model parameters loaded')
-    
+    model.device = device
     #"""
     #End of your code
     

@@ -29,7 +29,7 @@ def get_label(model, model_input, device):
     answer = model(model_input, device)
     return answer
     #"""
-    """
+    #"""
     # classification don't seem to be the issue
     with torch.no_grad():
         batch_size = model_input.size(0)
@@ -47,13 +47,10 @@ def get_label(model, model_input, device):
                 model_out =  model(x=sample, class_labels=class_tensor) #return model return x_out 
                 #print(f"Label {i} -> Output norm: {model_out.norm().item()}")
 
-                #tutorial thought, has error
-                #log_likelihood = torch.log(model_out) + discretized_mix_logistic_loss(sample, model_out)
-                #gpt recommend
                 #print(sample)      #sample is within range
                 #print(model_out)    #model_out is not within range
                 log_likelihood = -discretized_mix_logistic_loss(sample, model_out)      # for classification this is good enough (proportion), for actual prob need to follow tutorial slide
-                print(f"loglikelihood for label {i}:", log_likelihood.item(), "\n")
+                #print(f"loglikelihood for label {i}:", log_likelihood.item(), "\n")
                 if log_likelihood > max_p:
                     max_p = log_likelihood
                     corresponding_label = i
@@ -61,26 +58,6 @@ def get_label(model, model_input, device):
             answer[b] = corresponding_label
     #"""
     
-    #"""
-    batch_size = model_input.size(0)
-    log_likelihoods = torch.zeros(batch_size, NUM_CLASSES, device=device)
-        
-    with torch.no_grad():
-        for class_idx in range(NUM_CLASSES):
-            label = torch.full((batch_size,), class_idx, dtype=torch.long, device=device)
-                
-            output = model(model_input, label, sample=False)
-            #print(output)
-                
-            for i in range(batch_size):
-                single_input = model_input[i:i+1]
-                single_output = output[i:i+1]
-                nll = discretized_mix_logistic_loss(single_input, single_output)
-                log_likelihoods[i, class_idx] = -nll / np.prod(single_input.shape[1:])
-        
-    _, answer = torch.max(log_likelihoods, dim=1)
-    #print(answer)
-    #"""
     
     return answer
 
@@ -112,25 +89,10 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--mode', type=str,
                         default='validation', help='Mode for the dataset')
     
-    #"""
-    #added for convenient
-    parser.add_argument('-l', '--load_params', type=str, default=None,
-                        help='Restore training from previous model checkpoint?')
-    
-    parser.add_argument('-q', '--nr_resnet', type=int, default=1,
-                        help='Number of residual blocks per stage of the model')
-    parser.add_argument('-n', '--nr_filters', type=int, default=40,
-                        help='Number of filters to use across the model. Higher = larger model.')
-    parser.add_argument('-r', '--nr_logistic_mix', type=int, default=5,
-                        help='Number of logistic components in the mixture. Higher = more flexible model')
-    #"""
-    
     args = parser.parse_args()
     pprint(args.__dict__)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    kwargs = {'num_workers':0, 'pin_memory':True, 'drop_last':False}
-    
-    #device = "mps"              #add for mps
+    kwargs = {'num_workers':2, 'pin_memory':True, 'drop_last':False}
 
     ds_transforms = transforms.Compose([transforms.Resize((32, 32)), rescaling])
     dataloader = torch.utils.data.DataLoader(CPEN455Dataset(root_dir=args.data_dir, 
@@ -146,25 +108,18 @@ if __name__ == '__main__':
     #OG code
     model = random_classifier(NUM_CLASSES)
     #"""
-    model = PixelCNN(nr_resnet=args.nr_resnet, nr_filters=args.nr_filters, 
-                input_channels=3, nr_logistic_mix=args.nr_logistic_mix)
+    model = PixelCNN(nr_resnet=3, nr_filters=250, 
+                input_channels=3, nr_logistic_mix=150)
     #End of your code
     
     model = model.to(device)
     #Attention: the path of the model is fixed to './models/conditional_pixelcnn.pth'
     #You should save your model to this path
     
-    #OG
-    #model_path = os.path.join(os.path.dirname(__file__), 'models/conditional_pixelcnn.pth')
-    #NEW, For simplicity for now
-    model_path = args.load_params
+    model_path = os.path.join(os.path.dirname(__file__), 'models/conditional_pixelcnn.pth')
     
     if os.path.exists(model_path):
-        #OG
-        #model.load_state_dict(torch.load(model_path))
-        #new
-        model.load_state_dict(torch.load(model_path, map_location=device))
-
+        model.load_state_dict(torch.load(model_path))
         print('model parameters loaded')
     else:
         raise FileNotFoundError(f"Model file not found at {model_path}")
@@ -173,20 +128,3 @@ if __name__ == '__main__':
     acc = classifier(model = model, data_loader = dataloader, device = device)
     print(f"Accuracy: {acc}")
         
-
-
-        
-    """
-    class random_classifier(nn.Module):
-    def __init__(self, NUM_CLASSES):
-        super(random_classifier, self).__init__()
-        self.NUM_CLASSES = NUM_CLASSES
-        self.fc = nn.Linear(3, NUM_CLASSES)
-        print("Random classifier initialized")
-        # create a folder
-        if os.path.join(os.path.dirname(__file__), 'models') not in os.listdir():
-            os.mkdir(os.path.join(os.path.dirname(__file__), 'models'))
-        torch.save(self.state_dict(), os.path.join(os.path.dirname(__file__), 'models/conditional_pixelcnn.pth'))
-    def forward(self, x, device):
-        return torch.randint(0, self.NUM_CLASSES, (x.shape[0],)).to(device)
-    """
